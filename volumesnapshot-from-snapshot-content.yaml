@@ -1,0 +1,8 @@
+apiVersion: snapshot.storage.k8s.io/v1beta1
+kind: VolumeSnapshot
+metadata:
+  name: my-snapshot-from-content
+spec:
+  volumeSnapshotClassName: spawn
+  source:
+    volumeSnapshotContentName: snapcontent-49f1328c-af3a-4b8b-9c8c-6c33358066d9
