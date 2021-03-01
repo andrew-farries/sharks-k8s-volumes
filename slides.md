@@ -55,37 +55,23 @@ A volume is not an independent Kubernetes resource type. It exists only as a fie
 
 Create a Pod with two containers and a shared `emptyDir` volume:
 
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  labels:
-    run: bbox
-  name: bbox
-spec:
-  volumes:
-  - name: myvol
-    emptyDir: {}
-  containers:
-  - name: bbox
-    args:
-    - sleep
-    - "3600"
-    image: busybox
-    volumeMounts:
-    - name: myvol
-      mountPath: /stuff
-  - name: bbox2
-    args:
-    - sleep
-    - "3600"
-    image: busybox
-    volumeMounts:
-    - name: myvol
-      mountPath: /stuff
-  dnsPolicy: ClusterFirst
-  restartPolicy: Always
 ```
+foo: bar
+```
+
+Now run:
+
+```
+kubectl exec -it busybox -c bbox -- /bin/bash
+```
+
+and create a file in the `/stuff` directory. Exit the shell and run:
+
+```
+kubectl exec -it busybox -c bbox2 -- /bin/bash
+```
+
+What are the contents of the `/data/` directory?
 
 ---
 # Static Provisioning vs Dynamic Provisioning

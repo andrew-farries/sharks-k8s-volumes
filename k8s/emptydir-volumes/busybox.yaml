@@ -2,20 +2,28 @@ apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    run: bbox
-  name: bbox
+    run: busybox
+  name: busybox
 spec:
   volumes:
   - name: myvol
     emptyDir: {}
   containers:
-  - args:
+  - name: bbox
+    args:
     - sleep
     - "3600"
     image: busybox
-    name: bbox
     volumeMounts:
     - name: myvol
       mountPath: /stuff
+  - name: bbox2
+    args:
+    - sleep
+    - "3600"
+    image: busybox
+    volumeMounts:
+    - name: myvol
+      mountPath: /data
   dnsPolicy: ClusterFirst
   restartPolicy: Always
