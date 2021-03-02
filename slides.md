@@ -20,7 +20,6 @@ Peristence independent of Pod lifetime:
 * `StorageClasses`
 
 The new snapshot related functionality just of beta in Kubernetes 1.20:
-* `VolumeSnapshotContents`
 * `VolumeSnapshots`
 * `VolumeSnapshotClasses`
 
@@ -31,15 +30,20 @@ Minikube set up to allow persistent volumes and volume snapshots.
 
 Ensure that we have run:
 
-```bash
-> minikube addons enable volumesnapshots
-
+```
+> minikube delete
 ```
 
-and:
+```
+> minikube start
+```
 
 ```bash
 > minikube addons enable csi-hostpath-driver
+```
+
+```bash
+> minikube addons enable volumesnapshots
 ```
 
 ---
@@ -65,13 +69,26 @@ Now run:
 kubectl exec -it busybox -c bbox -- /bin/bash
 ```
 
-and create a file in the `/stuff` directory. Exit the shell and run:
+and create a file with some dummy data in the `/stuff` directory. Exit the shell and run:
 
 ```
 kubectl exec -it busybox -c bbox2 -- /bin/bash
 ```
 
-What are the contents of the `/data/` directory?
+* Look in the `/data` directory.
+
+* Delete the pod
+
+Once deleted, the volume ceases to exist.
+
+---
+# Persistent Volumes
+
+`PersistentVolumes` are volumes that have a lifetime independent of any `Pod` in the cluster.
+
+A `PersistentVolume` represents a storage volume on some storage device (like an SSD on the node, or in cloud provider storage like EBS).
+
+Pods get access to `PersistentVolumes` by creating `PersistentVolumeClaims` which bind to the `PersistentVolumes`. Once claimed, a `PersistentVolumeClaim` can be mounted into a Pod.
 
 ---
 # Static Provisioning vs Dynamic Provisioning
@@ -87,18 +104,40 @@ Static provisioning means that the cluster administrator creates a set of `Persi
 Dynamic provisioning allows new `PersistentVolumes` to be created 'on demand' by requesting one from a `StorageClass`. The set of `PersistentVolumes` is not fixed ahead of time by the cluster administrator.
 
 ---
-# PersistentVolumes
+# Static Provisioning
 
-We can create a new `PersistentVolume` in the cluster as follows:
+We can statically provision a new `PersistentVolume` in the cluster as follows:
 
 ```yaml
 foo: bar
 ```
 
----
-# PersistentVolumeClaims
+Then create a `PVC` to claim the volume:
 
-`PersistentVolumeClaims` (or just `PVCs`)
+```yaml
+foo:bar
+```
+
+Once the claim is bound, the `PVC` can be mounted into a Pod by specifying the PVC in the `volumes` section of the Pod spec:
+
+```yaml
+foo: bar
+```
+
+As before `k exec` into the Pod and write some data under the volume's mountpoint, then exit and delete the Pod.
+
+Notice that the `PVC` still exists in the cluster - its lifetime is independent of the `Pod`.
+
+Recreate another `Pod` using the same `Pod` spec and confirm that the data is still there.
+
+Note: `PersistentVolumeClaims` can also be bound by specifying a label selector, rather than a PV name.
+
+---
+# Why PersistentVolumeClaims?
+
+`PersistentVolumeClaims` are supposed to abstract away the details of where a particuar `PersistentVolume` comes from. When deploying a pod, you don't care about where the storage comes from, you just want '5Gi' of storage.
+
+This basically goes back to the idea that the cluster administrator is a separate person/group from the people deploying and running workloads on the cluster. Statically provisioned `PersistentVolumes` are the concern of the cluster admins. `PersistentVolumeClaims` are the concern of the cluster users.
 
 ---
 # Dynamic PVC provisioning with StorageClasses
@@ -129,7 +168,7 @@ Create this PVC and then run:
 kubectl get pvc,pv
 ```
 
-You can see that a new `PersistentVolume` has been created 'on demand' by the `StorageClass` and bound to the `my-pvc` PVC.
+You can see that a new `PersistentVolume` has been created 'on demand' by the `StorageClass` and bound to the `my-pvc` PVC. There was no pre-created `PersistentVolume` as there was in the static provisioning case.
 
 ---
 # Snapshots
@@ -137,10 +176,6 @@ You can see that a new `PersistentVolume` has been created 'on demand' by the `S
 Volume snapshots were introduced in alpha form in Kubernetes X.YZ, in beta in Kubernetes X.YZ and came of beta only very recently in Kubernetes X.YZ.
 
 `VolumeSnapshots` are resources in the cluster just like `Pods`, `ReplicaSets`, and so on. Create a `VolumeSnapshot` by specifying the PVC that is to be snapshotted:
-
-```
-foo: bar
-```
 
 ---
 # Volume Cloning
