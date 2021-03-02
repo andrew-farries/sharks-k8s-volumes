@@ -144,6 +144,12 @@ This basically goes back to the idea that the cluster administrator is a separat
 
 New `PersistentVolumes` can be created dynamically by a PVC by requesting a new one from a `StorageClass` rather than binding to an existing one.
 
+See what `StorageClasses` are available with
+
+```
+kubectl get sc
+```
+
 > StorageClasses are machines for creating PVCs on demand.
 
 [here](https://www.youtube.com/watch?v=0swOh5C3OVM)
@@ -176,14 +182,3 @@ You can see that a new `PersistentVolume` has been created 'on demand' by the `S
 Volume snapshots were introduced in alpha form in Kubernetes X.YZ, in beta in Kubernetes X.YZ and came of beta only very recently in Kubernetes X.YZ.
 
 `VolumeSnapshots` are resources in the cluster just like `Pods`, `ReplicaSets`, and so on. Create a `VolumeSnapshot` by specifying the PVC that is to be snapshotted:
-
----
-# Volume Cloning
-
-In addition to creating a new `PVC` by specifiying a `VolumeSnapshot` in the `dataSource` field, it is also possible to "clone" an existing `PVC` by specifying another `PVC` in the `dataSource` field. This effectively removes the need to snapshot a `PVC` before cloning it.
-
-*Not all CSI implementations support this feature!*
-
----
-# Resources
-
