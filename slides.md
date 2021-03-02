@@ -78,9 +78,13 @@ What are the contents of the `/data/` directory?
 
 `PersistentVolumes` can be *statically provisioned* or *dynamically provisioned*.
 
+## Static Provisioning
+
 Static provisioning means that the cluster administrator creates a set of `PersistentVolume` resources to be used by applications in the cluster. Pods have to use one of these resources to get access to a `PersistentVolume` - there is no other way to get hold of a `PersistentVolume`.
 
-Dynamic provisioning allows new `PersistentVolumes` to be created 'on demand' by requesting one from a `StorageClass`. The set of `PersistentVolumes` is therefore not fixed ahead of time by the cluster administrator.
+## Dynamic Provisioning
+
+Dynamic provisioning allows new `PersistentVolumes` to be created 'on demand' by requesting one from a `StorageClass`. The set of `PersistentVolumes` is not fixed ahead of time by the cluster administrator.
 
 ---
 # PersistentVolumes
@@ -94,7 +98,7 @@ foo: bar
 ---
 # PersistentVolumeClaims
 
-`PersistentVolumeClaims` (`or just PVCs`)
+`PersistentVolumeClaims` (or just `PVCs`)
 
 ---
 # Dynamic PVC provisioning with StorageClasses
@@ -103,7 +107,7 @@ New `PersistentVolumes` can be created dynamically by a PVC by requesting a new 
 
 > StorageClasses are machines for creating PVCs on demand.
 
-[here](www.google.com)
+[here](https://www.youtube.com/watch?v=0swOh5C3OVM)
 
 ```yaml
 apiVersion: v1
@@ -131,6 +135,12 @@ You can see that a new `PersistentVolume` has been created 'on demand' by the `S
 # Snapshots
 
 Volume snapshots were introduced in alpha form in Kubernetes X.YZ, in beta in Kubernetes X.YZ and came of beta only very recently in Kubernetes X.YZ.
+
+`VolumeSnapshots` are resources in the cluster just like `Pods`, `ReplicaSets`, and so on. Create a `VolumeSnapshot` by specifying the PVC that is to be snapshotted:
+
+```
+foo: bar
+```
 
 ---
 # Volume Cloning
