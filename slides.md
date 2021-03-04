@@ -28,7 +28,7 @@ The new snapshot related functionality just of beta in Kubernetes 1.20:
 
 Minikube set up to allow persistent volumes and volume snapshots.
 
-Ensure that we have run:
+Do this by running:
 
 ```
 > minikube delete
@@ -38,11 +38,11 @@ Ensure that we have run:
 > minikube start
 ```
 
-```bash
+```
 > minikube addons enable csi-hostpath-driver
 ```
 
-```bash
+```
 > minikube addons enable volumesnapshots
 ```
 
