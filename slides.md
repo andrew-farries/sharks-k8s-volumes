@@ -7,7 +7,7 @@ styles: {}
 ---
 # Kubernetes Volumes
 
-Let's learn about data persistence in Kubernetes.
+Let's learn about volumes and data persistence in Kubernetes.
 
 We will cover:
 
@@ -26,24 +26,16 @@ The new snapshot related functionality just of beta in Kubernetes 1.20:
 ---
 # Prerequisites
 
-Minikube set up to allow persistent volumes and volume snapshots.
-
-Do this by running:
+Create a new `minikube` namespace in which to work:
 
 ```
-> minikube delete
+kubectl create ns volumes-onboarding
 ```
 
-```
-> minikube start
-```
+Set the current context to the new namespace:
 
 ```
-> minikube addons enable csi-hostpath-driver
-```
-
-```
-> minikube addons enable volumesnapshots
+kubectl config set-context --current --namespace volumes-onboarding
 ```
 
 ---
@@ -60,7 +52,35 @@ A volume is not an independent Kubernetes resource type. It exists only as a fie
 Create a Pod with two containers and a shared `emptyDir` volume:
 
 ```
-foo: bar
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: busybox
+  name: busybox
+spec:
+  volumes:  # This is where the volumes for the pod are defined.
+  - name: myvol
+    emptyDir: {}
+  containers:
+  - name: bbox
+    args:
+    - sleep
+    - "3600"
+    image: busybox
+    volumeMounts:
+    - name: myvol
+      mountPath: /stuff
+  - name: bbox2
+    args:
+    - sleep
+    - "3600"
+    image: busybox
+    volumeMounts:  # This is where the volume is mounted into the pod.
+    - name: myvol
+      mountPath: /data
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
 ```
 
 Now run:
@@ -75,11 +95,15 @@ and create a file with some dummy data in the `/stuff` directory. Exit the shell
 kubectl exec -it busybox -c bbox2 -- /bin/bash
 ```
 
-* Look in the `/data` directory.
+Look in the `/data` directory and see that the data you wrote in the first container is also present in the other container. This is how two containers in a `Pod` can share a 'scratch area' on disk.
 
-* Delete the pod
+Delete the pod:
 
-Once deleted, the volume ceases to exist.
+```
+kubectl delete pod busybox
+```
+
+Once the `Pod` is deleted, the volume ceases to exist.
 
 ---
 # Persistent Volumes
@@ -109,19 +133,61 @@ Dynamic provisioning allows new `PersistentVolumes` to be created 'on demand' by
 We can statically provision a new `PersistentVolume` in the cluster as follows:
 
 ```yaml
-foo: bar
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv0001
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 5Gi
+  hostPath:
+    path: /data/pv0001/
 ```
 
 Then create a `PVC` to claim the volume:
 
 ```yaml
-foo:bar
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc
+spec:
+  storageClassName: ""
+  volumeName: pv0001
+  resources:
+    requests:
+      storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
 ```
 
 Once the claim is bound, the `PVC` can be mounted into a Pod by specifying the PVC in the `volumes` section of the Pod spec:
 
 ```yaml
-foo: bar
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: bbox
+  name: bbox
+spec:
+  volumes:
+  - name: myvol
+    persistentVolumeClaim:
+      claimName: my-pvc
+  containers:
+  - args:
+    - sleep
+    - "3600"
+    image: busybox
+    name: bbox
+    volumeMounts:
+    - name: myvol
+      mountPath: /stuff
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
 ```
 
 As before `k exec` into the Pod and write some data under the volume's mountpoint, then exit and delete the Pod.
@@ -137,7 +203,7 @@ Note: `PersistentVolumeClaims` can also be bound by specifying a label selector,
 
 `PersistentVolumeClaims` are supposed to abstract away the details of where a particuar `PersistentVolume` comes from. When deploying a pod, you don't care about where the storage comes from, you just want '5Gi' of storage.
 
-This basically goes back to the idea that the cluster administrator is a separate person/group from the people deploying and running workloads on the cluster. Statically provisioned `PersistentVolumes` are the concern of the cluster admins. `PersistentVolumeClaims` are the concern of the cluster users.
+This goes back to the idea that the cluster administrator is a separate person/group from the people deploying and running workloads on the cluster. Statically provisioned `PersistentVolumes` are the concern of the cluster admins. `PersistentVolumeClaims` are the concern of the cluster users.
 
 ---
 # Dynamic PVC provisioning with StorageClasses
@@ -150,15 +216,13 @@ See what `StorageClasses` are available with
 kubectl get sc
 ```
 
-> StorageClasses are machines for creating PVCs on demand.
-
-[here](https://www.youtube.com/watch?v=0swOh5C3OVM)
+Use the `rook-ceph-block` `StorageClass` to create a new `PVC` that requests a new `PersistentVolume` from that `StorageClass`:
 
 ```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: my-pvc
+  name: my-pvc2
 spec:
   storageClassName: rook-ceph-block
   accessModes:
@@ -176,9 +240,110 @@ kubectl get pvc,pv
 
 You can see that a new `PersistentVolume` has been created 'on demand' by the `StorageClass` and bound to the `my-pvc` PVC. There was no pre-created `PersistentVolume` as there was in the static provisioning case.
 
+As before this `PVC` can be mounted into a pod:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: bbox
+  name: bbox
+spec:
+  volumes:
+  - name: myvol
+    persistentVolumeClaim:
+      claimName: my-pvc2
+  containers:
+  - args:
+    - sleep
+    - "3600"
+    image: busybox
+    name: bbox
+    volumeMounts:
+    - name: myvol
+      mountPath: /stuff
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+```
+
+`k exec -it bbox -- /bin/bash`, write some data, exit and delete the `Pod`. The dynamically provisioned `PVC` `my-pvc2` is still present in the cluster.
+
 ---
 # Snapshots
 
-Volume snapshots were introduced in alpha form in Kubernetes X.YZ, in beta in Kubernetes X.YZ and came of beta only very recently in Kubernetes X.YZ.
+The `VolumeSnapshots` feature went GA in Kubernetes 1.20. This allows PVCs to be snapshotted, and then new PVCs can be created based on that snapshot.
 
 `VolumeSnapshots` are resources in the cluster just like `Pods`, `ReplicaSets`, and so on. Create a `VolumeSnapshot` by specifying the PVC that is to be snapshotted:
+
+Let's snapshot the `rook-ceph-block` PVC we created in the previous step:
+
+```yaml
+apiVersion: snapshot.storage.k8s.io/v1beta1
+kind: VolumeSnapshot
+metadata:
+  name: my-snapshot
+spec:
+  volumeSnapshotClassName: csi-rbdplugin-snapclass
+  source:
+    persistentVolumeClaimName: my-pvc2
+```
+
+Now do:
+
+```
+kubectl get volumesnapshots
+```
+
+We have one new `VolumeSnapshot` created in the cluster.
+
+Connect to the pod that has `my-pvc2` mounted, and write some more data under the mountpoint. This new data will not be included in the `VolumeSnapshot` we just took.
+
+Now create a new `PVC` using the `VolumeSnapshot` as the data source - this gives a new `PVC` based on the `VolumeSnapshot`:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-based-on-snapshot
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: rook-ceph-block
+  resources:
+    requests:
+      storage: 50Gi
+  dataSource:  # This is the interesting bit.
+    name: my-snapshot
+    kind: VolumeSnapshot
+    apiGroup: snapshot.storage.k8s.io
+```
+
+`kubectl get pvc` now shows the new PVC. We can mount this into a pod as before:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: bbox
+  name: bbox
+spec:
+  volumes:
+  - name: myvol
+    persistentVolumeClaim:
+      claimName: pvc-based-on-snapshot
+  containers:
+  - args:
+    - sleep
+    - "3600"
+    image: busybox
+    name: bbox
+    volumeMounts:
+    - name: myvol
+      mountPath: /stuff
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+```
+
+Exec into the pod as before and look at the data under `/stuff`. The data does not included the parts that were written after the snapshot was taken.
