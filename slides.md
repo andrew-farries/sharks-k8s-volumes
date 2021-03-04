@@ -51,7 +51,7 @@ A volume is not an independent Kubernetes resource type. It exists only as a fie
 
 Create a Pod with two containers and a shared `emptyDir` volume:
 
-```
+```yaml
 apiVersion: v1
 kind: Pod
 metadata:
@@ -112,7 +112,7 @@ Once the `Pod` is deleted, the volume ceases to exist.
 
 A `PersistentVolume` represents a storage volume on some storage device (like an SSD on the node, or in cloud provider storage like EBS).
 
-Pods get access to `PersistentVolumes` by creating `PersistentVolumeClaims` which bind to the `PersistentVolumes`. Once claimed, a `PersistentVolumeClaim` can be mounted into a Pod.
+Pods get access to `PersistentVolumes` by creating `PersistentVolumeClaims` which bind to a `PersistentVolume`. Once claimed, a `PersistentVolumeClaim` can be mounted into a Pod.
 
 ---
 # Static Provisioning vs Dynamic Provisioning
@@ -130,7 +130,7 @@ Dynamic provisioning allows new `PersistentVolumes` to be created 'on demand' by
 ---
 # Static Provisioning
 
-We can statically provision a new `PersistentVolume` in the cluster as follows:
+We can statically provision a new `PersistentVolume` in the cluster like this:
 
 ```yaml
 apiVersion: v1
@@ -145,6 +145,8 @@ spec:
   hostPath:
     path: /data/pv0001/
 ```
+
+This creates a new `hostPath` `PersistentVolume`. This means the storage for the volume is on the node, as opposed to outside the cluster. It's also possible to create eg EBS backed `PersistentVolumes` too.
 
 Then create a `PVC` to claim the volume:
 
@@ -347,3 +349,6 @@ spec:
 ```
 
 Exec into the pod as before and look at the data under `/stuff`. The data does not included the parts that were written after the snapshot was taken.
+
+---
+# The End
